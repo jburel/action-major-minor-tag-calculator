@@ -11,6 +11,11 @@ function supportedPrerelease(pre) {
   return !pre.length || String(pre).match(/^\d+$/);
 }
 
+function equalMajorMinorPatch(a, b) {
+  // Predicate function for filtering
+  return a.major == b.major && a.minor == b.minor && a.patch == b.patch;
+}
+
 async function calculateTags(token, owner, repo, ref, prefix) {
   core.debug(`ref: ${ref}`);
 
@@ -63,6 +68,14 @@ async function calculateTags(token, owner, repo, ref, prefix) {
   let outputTags = [];
   if (current.prerelease.length) {
     outputTags.push(`${prefix}${current.version}`);
+
+    // return without additional output tags if we got an outdated build number
+    const similarTags = tags.filter(
+      (t) => t.prerelease.length && equalMajorMinorPatch(current, t)
+    );
+    if (similarTags.length && semver.compare(current, similarTags[0]) < 0) {
+      return outputTags;
+    }
   }
 
   outputTags.push(
